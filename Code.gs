@@ -27,7 +27,12 @@ function makeChannel(emails, name) {
   var created = createUniqueChannel(name);
   if (!created.ok) return { ok: false, error: 'Slack rejected it: ' + created.error };
 
-  slack('conversations.invite', { channel: created.channel.id, users: ids.join(',') });
+  // Whoever the token belongs to is already in the channel; inviting them fails the whole call.
+  var invitees = ids.filter(function (id) { return id !== created.channel.creator; });
+  if (invitees.length) {
+    slack('conversations.invite', { channel: created.channel.id, users: invitees.join(',') });
+  }
+
   return { ok: true, channel: created.channel.name, members: ids.length };
 }
 
@@ -141,8 +146,14 @@ function slack(method, payload) {
   return JSON.parse(UrlFetchApp.fetch(SLACK_API + method, options).getContentText());
 }
 
+/**
+ * A user token (xoxp-) is preferred: channels are then created as that person, so Slack
+ * applies their permissions and no bot lingers in every channel. Falls back to a bot
+ * token (xoxb-), which many workspaces block from creating channels at all.
+ */
 function slackToken() {
-  return PropertiesService.getScriptProperties().getProperty('SLACK_BOT_TOKEN');
+  var properties = PropertiesService.getScriptProperties();
+  return properties.getProperty('SLACK_USER_TOKEN') || properties.getProperty('SLACK_BOT_TOKEN');
 }
 
 function slugify(text) {

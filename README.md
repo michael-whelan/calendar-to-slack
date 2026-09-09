@@ -24,7 +24,7 @@ Takes about 15 minutes. You need to be able to create a Slack app in your worksp
 
 At [api.slack.com/apps](https://api.slack.com/apps) → Create New App → From scratch.
 
-Under OAuth & Permissions, add these Bot Token Scopes:
+Under OAuth & Permissions, add these three scopes:
 
 | Scope | Why |
 | --- | --- |
@@ -32,7 +32,15 @@ Under OAuth & Permissions, add these Bot Token Scopes:
 | `users:read` | read the workspace member list |
 | `users:read.email` | match calendar guests to Slack accounts by email |
 
-Install the app to your workspace and copy the Bot User OAuth Token (starts with `xoxb-`).
+Add them as User Token Scopes, not Bot Token Scopes. Most workspaces restrict channel creation, and
+Slack applies that policy to apps — a bot token then fails with `restricted_action` no matter what
+scopes it holds. A user token acts as you, so it inherits your own permissions, and it leaves no bot
+sitting in every channel it creates.
+
+Install the app to your workspace and copy the User OAuth Token (starts with `xoxp-`).
+
+Use a Bot Token Scope setup instead only if your workspace lets apps create channels and you'd rather
+the channels not be attributed to a person. The code accepts either.
 
 ### 2. Create the Apps Script project
 
@@ -50,7 +58,10 @@ its own `appsscript.json`, which this repo's version replaces.
 
 Open the project with `clasp open`, then Project Settings → Script Properties → Add:
 
-- Property `SLACK_BOT_TOKEN`, value your `xoxb-` token.
+- Property `SLACK_USER_TOKEN`, value your `xoxp-` token.
+
+If you went the bot route instead, name the property `SLACK_BOT_TOKEN`. When both exist the user
+token wins.
 
 ### 4. Deploy it
 
