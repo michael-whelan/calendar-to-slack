@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Calendar to Slack",
+  "version": "0.1.0",
+  "description": "Adds a Slack channel button to the Google Calendar event popup.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://calendar.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Calendar to Slack"
+  }
+}

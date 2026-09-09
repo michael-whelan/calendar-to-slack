@@ -63,6 +63,30 @@ Marketplace app: Deploy → New deployment → Add-on, then follow
 Google Workspace admin installs it once for everyone. No Google review is required for private
 domain-only publishing.
 
+## Optional: a button in the event popup (Chrome extension)
+
+The add-on can only live in Calendar's side panel — Google exposes no way to put a control in the
+event popup itself. The `extension/` directory works around that by injecting a button into the
+popup. It holds no Slack credentials: it posts the guest list to the Apps Script project, which does
+the work with the token it already has.
+
+This is a DOM hack against markup Google doesn't guarantee. Expect it to need a fix whenever Calendar
+is reskinned; the fragile parts are isolated in `readGuests()` and `readTitle()` in `content.js`.
+
+1. In Script Properties add a second property, `SHARED_SECRET`, set to a long random string. It is
+   the only thing guarding the endpoint.
+2. In the Apps Script editor: Deploy → New deployment → Web app. Execute as *me*, access *Anyone*.
+   Copy the `/exec` URL.
+3. In Chrome: `chrome://extensions` → enable Developer mode → Load unpacked → pick `extension/`.
+4. Click the extension's Details → Extension options, and paste the web app URL and the secret.
+
+Reload Calendar and open a meeting. The button appears in the popup next to the title.
+
+Access *Anyone* means the endpoint is reachable by anyone who has the URL, with the shared secret as
+the only check. That's a deliberate trade for keeping the extension credential-free and serverless.
+If that isn't acceptable in your organisation, don't deploy the web app — the side-panel add-on needs
+none of this.
+
 ## Scopes it asks for
 
 | Scope | Why |
