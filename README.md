@@ -6,6 +6,16 @@ channel. No typing names. Guests who aren't in your Slack workspace are skipped 
 It's a Google Workspace Add-on written in Apps Script — no server, no hosting, no database. Each
 company deploys its own copy with its own Slack app, so no one's tokens ever leave their workspace.
 
+## Using it
+
+1. Open [Google Calendar](https://calendar.google.com) and click a meeting to open it.
+2. In the add-on strip down the far right edge of the screen — the same one holding Tasks, Keep and
+   Contacts — click the Calendar to Slack icon. If the strip isn't visible, expand the side panel
+   with the arrow at the bottom right.
+3. The card shows how many guests are on the meeting and prefills a channel name from its title.
+   Edit the name if you want.
+4. Click Create private channel. The channel exists in Slack by the time the confirmation appears.
+
 ## Setup
 
 Takes about 15 minutes. You need to be able to create a Slack app in your workspace.
