@@ -19,8 +19,17 @@ async function createChannel({ emails, title }) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ secret, emails, title })
     });
-    return await response.json();
+
+    // A login page or an Apps Script error comes back as HTML, not JSON — say so plainly.
+    const body = await response.text();
+    try {
+      return JSON.parse(body);
+    } catch (notJson) {
+      console.error('Endpoint returned non-JSON:', response.status, body.slice(0, 500));
+      return { ok: false, error: `Endpoint returned ${response.status}, not JSON — see service worker log` };
+    }
   } catch (error) {
+    console.error('Request failed:', error);
     return { ok: false, error: error.message };
   }
 }

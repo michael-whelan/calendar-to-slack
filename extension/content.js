@@ -46,14 +46,20 @@ async function onClick(button, guests, title) {
   button.disabled = true;
   button.textContent = 'Creating…';
 
-  const result = await chrome.runtime.sendMessage({ emails: guests, title });
+  let result;
+  try {
+    result = await chrome.runtime.sendMessage({ emails: guests, title });
+  } catch (error) {
+    result = { ok: false, error: error.message || 'Extension error' };
+  }
 
   if (result && result.ok) {
     button.textContent = `#${result.channel} created`;
     return;
   }
 
-  button.textContent = (result && result.error) || 'Failed';
+  button.textContent = (result && result.error) || 'No reply from extension';
+  button.title = button.textContent;
   button.disabled = false;
 }
 
