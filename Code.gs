@@ -386,11 +386,6 @@ function slack(method, payload) {
   return JSON.parse(UrlFetchApp.fetch(SLACK_API + method, options).getContentText());
 }
 
-/**
- * A user token (xoxp-) is preferred: channels are then created as that person, so Slack
- * applies their permissions and no bot lingers in every channel. Falls back to a bot
- * token (xoxb-), which many workspaces block from creating channels at all.
- */
 /** Slack names the missing scope on a rejection; carry that through instead of dropping it. */
 function slackError(response) {
   return 'Slack rejected it: ' + response.error +
