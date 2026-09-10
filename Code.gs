@@ -11,7 +11,7 @@ var SLACK_API = 'https://slack.com/api/';
 // Bumped whenever behaviour changes. Open the web app URL in a browser to see which
 // version that deployment is actually serving — deployments pin a snapshot, so a stale
 // one is the usual reason the extension misbehaves while the sidebar works.
-var VERSION = '9-slack-oauth';
+var VERSION = '10-user-scoped-tokens';
 
 /* ---------- core ---------- */
 
@@ -397,11 +397,12 @@ function slackError(response) {
     (response.needed ? ' (needs ' + response.needed + ')' : '');
 }
 
+/**
+ * Deliberately user-scoped only. Script properties are shared by everyone using a
+ * published add-on, so a token stored there would make every user act as its owner.
+ */
 function slackToken() {
-  var script = PropertiesService.getScriptProperties();
-  return PropertiesService.getUserProperties().getProperty('SLACK_USER_TOKEN') ||
-    script.getProperty('SLACK_USER_TOKEN') ||
-    script.getProperty('SLACK_BOT_TOKEN');
+  return PropertiesService.getUserProperties().getProperty('SLACK_USER_TOKEN');
 }
 
 function slugify(text) {
