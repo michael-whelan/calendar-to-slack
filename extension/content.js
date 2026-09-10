@@ -3,7 +3,11 @@
  *
  * Calendar's markup is not a public API, so everything below is best-effort and
  * expected to need adjusting when Google reskins the UI. All the fragile parts are
- * in readGuests() and readTitle(); nothing else depends on the DOM shape.
+ * in the read* functions; nothing else depends on the DOM shape.
+ *
+ * The popup stops rendering individual guests on large meetings, so the event id is
+ * the preferred payload — the server reads the real attendee list from Calendar.
+ * Scraped emails are only a fallback for when no id can be found.
  */
 
 const EMAIL = /^[\w.+-]+@[\w-]+\.[\w.-]+$/;
@@ -23,7 +27,22 @@ function readGuests(popup) {
   return [...found].filter((email) => !email.endsWith('resource.calendar.google.com'));
 }
 
-/** Meeting title, used to prefill the channel name. */
+/** Calendar's own id for the event, if it appears anywhere we can reach. */
+function readEventId(popup) {
+  return (
+    popup.getAttribute('data-eventid') ||
+    (popup.querySelector('[data-eventid]') || {}).dataset?.eventid ||
+    (document.querySelector('[data-eventid][aria-selected="true"]') || {}).dataset?.eventid ||
+    ''
+  );
+}
+
+/** The guest count Calendar prints, e.g. "23 guests" — the truth when the list is collapsed. */
+function readStatedGuestCount(popup) {
+  const match = popup.innerText.match(/(\d+)\s+guests?/i);
+  return match ? Number(match[1]) : 0;
+}
+
 function readTitle(popup) {
   const heading = popup.querySelector('[role="heading"], h1, h2');
   return heading ? heading.textContent.trim() : '';
@@ -42,26 +61,20 @@ function styleButton(button) {
   });
 }
 
-async function onClick(button, guests, title) {
+async function onClick(button, payload) {
   button.disabled = true;
   button.textContent = 'Creating…';
 
   let result;
   try {
-    result = await chrome.runtime.sendMessage({ emails: guests, title });
+    result = await chrome.runtime.sendMessage(payload);
   } catch (error) {
     result = { ok: false, error: error.message || 'Extension error' };
   }
 
-  if (result && result.ok) {
-    button.textContent = result.summary;
-    button.title = result.summary;
-    return;
-  }
-
-  button.textContent = (result && result.error) || 'No reply from extension';
+  button.textContent = (result && (result.summary || result.error)) || 'No reply from extension';
   button.title = button.textContent;
-  button.disabled = false;
+  if (!result || !result.ok) button.disabled = false;
 }
 
 /** Adds the button to one popup, once. */
@@ -69,14 +82,25 @@ function decorate(popup) {
   if (popup.querySelector('.cal-to-slack')) return;
 
   const guests = readGuests(popup);
-  if (!guests.length) return;
+  const eventId = readEventId(popup);
+  const stated = readStatedGuestCount(popup);
+  if (!guests.length && !eventId) return;
 
   const button = document.createElement('button');
   button.className = 'cal-to-slack';
   button.type = 'button';
-  button.textContent = `Slack channel (${guests.length})`;
   styleButton(button);
-  button.addEventListener('click', () => onClick(button, guests, readTitle(popup)));
+
+  // Without an id, a collapsed guest list would silently create the wrong conversation
+  // — a 1:1 with the organiser instead of the group. Refuse rather than get it wrong.
+  if (!eventId && stated > guests.length) {
+    button.textContent = 'Guests hidden — use the sidebar';
+    button.disabled = true;
+  } else {
+    button.textContent = `Slack channel (${stated || guests.length})`;
+    button.addEventListener('click', () =>
+      onClick(button, { eventId, emails: guests, title: readTitle(popup) }));
+  }
 
   const heading = popup.querySelector('[role="heading"], h1, h2');
   const anchor = (heading && heading.parentElement) || popup;

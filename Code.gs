@@ -11,7 +11,7 @@ var SLACK_API = 'https://slack.com/api/';
 // Bumped whenever behaviour changes. Open the web app URL in a browser to see which
 // version that deployment is actually serving — deployments pin a snapshot, so a stale
 // one is the usual reason the extension misbehaves while the sidebar works.
-var VERSION = '6-event-id-lookup';
+var VERSION = '7-eid-shapes';
 
 /* ---------- core ---------- */
 
@@ -171,26 +171,51 @@ function doPost(request) {
   // guests on large meetings, so anything scraped from it undercounts.
   if (body.eventId) {
     var event = readEvent(body.eventId, body.calendarId);
-    if (event.error) return json({ ok: false, error: event.error });
-    emails = event.emails;
-    title = title || event.title;
+    if (!event.error) {
+      emails = event.emails;
+      title = title || event.title;
+    } else if (!emails.length) {
+      return json({ ok: false, error: event.error });
+    }
   }
 
   return json(makeChannel(emails, title));
 }
 
-/** The authoritative guest list for an event, straight from Calendar. */
+/**
+ * The authoritative guest list for an event, straight from Calendar. The id lifted from
+ * the DOM comes in more than one shape, so try each before giving up.
+ */
 function readEvent(eventId, calendarId) {
-  try {
-    var event = Calendar.Events.get(calendarId || 'primary', eventId);
-    var emails = (event.attendees || [])
-      .filter(function (guest) { return guest.email && !guest.resource; })
-      .map(function (guest) { return guest.email; });
+  var candidates = [{ id: eventId, calendar: calendarId }];
+  var decoded = decodeEid(eventId);
+  if (decoded) candidates.push(decoded);
 
-    if (event.organizer && event.organizer.email) emails.push(event.organizer.email);
-    return { emails: dedupe(emails), title: event.summary || '' };
+  for (var i = 0; i < candidates.length; i++) {
+    try {
+      var event = Calendar.Events.get(candidates[i].calendar || calendarId || 'primary', candidates[i].id);
+      var emails = (event.attendees || [])
+        .filter(function (guest) { return guest.email && !guest.resource; })
+        .map(function (guest) { return guest.email; });
+
+      if (event.organizer && event.organizer.email) emails.push(event.organizer.email);
+      return { emails: dedupe(emails), title: event.summary || '' };
+    } catch (err) {
+      // Wrong shape of id — fall through and try the next one.
+    }
+  }
+
+  return { error: 'Could not read that event from Calendar.' };
+}
+
+/** Calendar sometimes encodes its DOM id as base64 of "<eventId> <calendarId>". */
+function decodeEid(eventId) {
+  try {
+    var text = Utilities.newBlob(Utilities.base64Decode(eventId)).getDataAsString();
+    var parts = text.split(' ');
+    return /^[\w-]+$/.test(parts[0]) ? { id: parts[0], calendar: parts[1] } : null;
   } catch (err) {
-    return { error: 'Could not read that event: ' + err.message };
+    return null;
   }
 }
 
