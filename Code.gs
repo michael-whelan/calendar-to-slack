@@ -11,13 +11,19 @@ var SLACK_API = 'https://slack.com/api/';
 // Bumped whenever behaviour changes. Open the web app URL in a browser to see which
 // version that deployment is actually serving — deployments pin a snapshot, so a stale
 // one is the usual reason the extension misbehaves while the sidebar works.
-var VERSION = '8-settings-card';
+var VERSION = '9-slack-oauth';
 
 /* ---------- core ---------- */
 
 /** Resolves guests to Slack users, creates the private channel, invites them. */
 function makeChannel(emails, name) {
-  if (!slackToken()) return { ok: false, error: 'No Slack token configured.' };
+  if (!slackToken()) {
+    return {
+      ok: false,
+      code: 'not_connected',
+      error: 'Connect Slack first — open Calendar to Slack in the Google Calendar sidebar.'
+    };
+  }
 
   name = slugify(name);
   if (!name) return { ok: false, error: 'Give the channel a name first.' };
@@ -97,6 +103,67 @@ function createUniqueChannel(name) {
   return { ok: false, error: 'name_taken' };
 }
 
+/* ---------- connecting Slack ---------- */
+
+var SLACK_USER_SCOPES = 'groups:write,users:read,users:read.email,mpim:write';
+
+/**
+ * One Slack app serves every organisation, so each person authorises individually and
+ * their token is stored against their own account. Nobody pastes a token, and no
+ * administrator — theirs or ours — can read it.
+ */
+function slackAuthorizeUrl() {
+  var clientId = PropertiesService.getScriptProperties().getProperty('SLACK_CLIENT_ID');
+  if (!clientId) return '';
+
+  var state = ScriptApp.newStateToken()
+    .withMethod('slackCallback')
+    .withTimeout(3600)
+    .createToken();
+
+  return 'https://slack.com/oauth/v2/authorize' +
+    '?client_id=' + encodeURIComponent(clientId) +
+    '&user_scope=' + encodeURIComponent(SLACK_USER_SCOPES) +
+    '&redirect_uri=' + encodeURIComponent(redirectUri()) +
+    '&state=' + encodeURIComponent(state);
+}
+
+/** Apps Script routes this fixed URL back to slackCallback, so it is the same for everyone. */
+function redirectUri() {
+  return 'https://script.google.com/macros/d/' + ScriptApp.getScriptId() + '/usercallback';
+}
+
+/** Slack sends the user back here with a code; swap it for their token. */
+function slackCallback(request) {
+  var properties = PropertiesService.getScriptProperties();
+  var response = JSON.parse(UrlFetchApp.fetch(SLACK_API + 'oauth.v2.access', {
+    method: 'post',
+    muteHttpExceptions: true,
+    payload: {
+      client_id: properties.getProperty('SLACK_CLIENT_ID'),
+      client_secret: properties.getProperty('SLACK_CLIENT_SECRET'),
+      code: request.parameter.code,
+      redirect_uri: redirectUri()
+    }
+  }).getContentText());
+
+  var token = response.authed_user && response.authed_user.access_token;
+  if (!response.ok || !token) {
+    return HtmlService.createHtmlOutput('<p>Slack refused: ' + (response.error || 'no token returned') + '</p>');
+  }
+
+  PropertiesService.getUserProperties().setProperty('SLACK_USER_TOKEN', token);
+  return HtmlService.createHtmlOutput('<p>Connected. Close this tab and reopen the meeting.</p>');
+}
+
+function disconnectSlack() {
+  PropertiesService.getUserProperties().deleteProperty('SLACK_USER_TOKEN');
+  return CardService.newActionResponseBuilder()
+    .setNotification(CardService.newNotification().setText('Disconnected from Slack.'))
+    .setNavigation(CardService.newNavigation().updateCard(onHomepage()))
+    .build();
+}
+
 /* ---------- settings ---------- */
 
 /**
@@ -104,26 +171,26 @@ function createUniqueChannel(name) {
  * sending people into Project Settings to hand-edit Script Properties.
  */
 function onHomepage() {
-  var properties = PropertiesService.getScriptProperties();
-  var secret = properties.getProperty('SHARED_SECRET');
+  var section = CardService.newCardSection();
 
-  var section = CardService.newCardSection()
-    .addWidget(CardService.newTextParagraph().setText(
-      'Slack token: ' + (slackToken() ? 'configured' : 'not set') + '<br>' +
-      'Extension secret: ' + (secret ? 'configured' : 'not set')))
-    .addWidget(CardService.newTextInput()
-      .setFieldName('token')
-      .setTitle('Slack user token (xoxp-…)')
-      .setHint('Leave blank to keep the current one.'))
-    .addWidget(CardService.newTextInput()
-      .setFieldName('secret')
-      .setTitle('Extension shared secret')
-      .setHint('Only needed for the Chrome extension.')
-      .setValue(secret || Utilities.getUuid()))
-    .addWidget(CardService.newTextButton()
-      .setText('Save')
-      .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
-      .setOnClickAction(CardService.newAction().setFunctionName('saveSettings')));
+  if (!slackToken()) {
+    section
+      .addWidget(CardService.newTextParagraph().setText(
+        'Connect your Slack account once, and every meeting gets a one-click chat.'))
+      .addWidget(CardService.newTextButton()
+        .setText('Connect Slack')
+        .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+        .setOpenLink(CardService.newOpenLink().setUrl(slackAuthorizeUrl())));
+  } else {
+    var identity = slack('auth.test');
+    section
+      .addWidget(CardService.newTextParagraph().setText(identity.ok
+        ? 'Connected as ' + identity.user + ' on ' + identity.team + '.'
+        : 'Slack rejected the stored token: ' + identity.error))
+      .addWidget(CardService.newTextButton()
+        .setText('Disconnect')
+        .setOnClickAction(CardService.newAction().setFunctionName('disconnectSlack')));
+  }
 
   return CardService.newCardBuilder()
     .setHeader(CardService.newCardHeader().setTitle('Calendar to Slack').setSubtitle('Version ' + VERSION))
@@ -131,27 +198,11 @@ function onHomepage() {
     .build();
 }
 
-function saveSettings(e) {
-  var properties = PropertiesService.getScriptProperties();
-  var token = (e.formInput.token || '').trim();
-  var secret = (e.formInput.secret || '').trim();
-
-  if (token) properties.setProperty('SLACK_USER_TOKEN', token);
-  if (secret) properties.setProperty('SHARED_SECRET', secret);
-
-  if (!token) return toast('Saved.');
-
-  var identity = slack('auth.test');
-  return toast(identity.ok ? 'Saved — connected as ' + identity.user + '.' : 'Saved, but Slack says: ' + identity.error);
-}
-
 /* ---------- front door 1: the Calendar side panel ---------- */
 
 /** Renders the side-panel card when a Calendar event is opened. */
 function onEventOpen(e) {
-  if (!slackToken()) {
-    return notice('Not configured', 'Open this add-on outside an event to paste your Slack token.');
-  }
+  if (!slackToken()) return onHomepage();
 
   var emails = guestEmails(e);
   if (!emails.length) {
@@ -347,8 +398,10 @@ function slackError(response) {
 }
 
 function slackToken() {
-  var properties = PropertiesService.getScriptProperties();
-  return properties.getProperty('SLACK_USER_TOKEN') || properties.getProperty('SLACK_BOT_TOKEN');
+  var script = PropertiesService.getScriptProperties();
+  return PropertiesService.getUserProperties().getProperty('SLACK_USER_TOKEN') ||
+    script.getProperty('SLACK_USER_TOKEN') ||
+    script.getProperty('SLACK_BOT_TOKEN');
 }
 
 function slugify(text) {
