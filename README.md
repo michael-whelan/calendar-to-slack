@@ -43,31 +43,30 @@ Install the app to your workspace and copy the User OAuth Token (starts with `xo
 Use a Bot Token Scope setup instead only if your workspace lets apps create channels and you'd rather
 the channels not be attributed to a person. The code accepts either.
 
-### 2. Create the Apps Script project
+### 2. Run the setup script
 
 ```sh
 npm install -g @google/clasp
-clasp login
-clasp create --type standalone --title "Calendar to Slack"
-clasp push --force
+./setup.sh
 ```
 
-Answer `.clasp.json` prompts with the repo root. `--force` is needed because `clasp create` writes
-its own `appsscript.json`, which this repo's version replaces.
+It logs you in if needed, creates the Apps Script project, pushes the code, deploys the web app, and
+prints the endpoint URL plus whatever is left to do by hand. Safe to re-run — it reuses the existing
+project when `.clasp.json` is already there.
 
-### 3. Add the token
+### 3. Install and paste the token
 
-Open the project with `clasp open`, then Project Settings → Script Properties → Add:
+In the Apps Script editor: Deploy → Test deployments → Install.
 
-- Property `SLACK_USER_TOKEN`, value your `xoxp-` token.
+Reload Google Calendar and open the add-on from the right-hand strip with no event selected. That
+shows the settings card: paste the `xoxp-` token, click Save, and it confirms which Slack account it
+connected as. Nothing needs editing in Project Settings.
 
-If you went the bot route instead, name the property `SLACK_BOT_TOKEN`. When both exist the user
-token wins.
-
-### 4. Deploy it
-
-In the editor: Deploy → Test deployments → Install. Reload Google Calendar, open any meeting, and
-the add-on appears in the right-hand side panel.
+To give it to your whole company rather than just yourself, publish it as a private Workspace
+Marketplace app: Deploy → New deployment → Add-on, then follow
+[Publish a private app](https://developers.google.com/workspace/marketplace/how-to-publish). Your
+Google Workspace admin installs it once for everyone, and no Google review is required for private
+domain-only publishing.
 
 To give it to your whole company instead of just yourself, publish it as a private Workspace
 Marketplace app: Deploy → New deployment → Add-on, then follow
@@ -83,14 +82,16 @@ popup. It holds no Slack credentials: it posts the guest list to the Apps Script
 the work with the token it already has.
 
 This is a DOM hack against markup Google doesn't guarantee. Expect it to need a fix whenever Calendar
-is reskinned; the fragile parts are isolated in `readGuests()` and `readTitle()` in `content.js`.
+is reskinned; the fragile parts are isolated in the `read*` functions in `content.js`. It prefers
+Calendar's event id and lets the server fetch the real guest list, because the popup stops rendering
+individual guests on large meetings — where no id is found and guests are hidden, the button disables
+itself rather than create the wrong conversation.
 
-1. In Script Properties add a second property, `SHARED_SECRET`, set to a long random string. It is
-   the only thing guarding the endpoint.
-2. In the Apps Script editor: Deploy → New deployment → Web app. Execute as *me*, access *Anyone*.
-   Copy the `/exec` URL.
-3. In Chrome: `chrome://extensions` → enable Developer mode → Load unpacked → pick `extension/`.
-4. Click the extension's Details → Extension options, and paste the web app URL and the secret.
+`setup.sh` already deployed the endpoint and printed its URL; the settings card holds the shared
+secret, generated for you.
+
+1. In Chrome: `chrome://extensions` → enable Developer mode → Load unpacked → pick `extension/`.
+2. Click the extension's Details → Extension options, and paste the endpoint URL and the secret.
 
 Reload Calendar and open a meeting. The button appears in the popup next to the title.
 

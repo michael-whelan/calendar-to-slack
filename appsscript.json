@@ -27,7 +27,10 @@
   "addOns": {
     "common": {
       "name": "Calendar to Slack",
-      "logoUrl": "https://www.gstatic.com/images/branding/product/1x/apps_script_48dp.png"
+      "logoUrl": "https://www.gstatic.com/images/branding/product/1x/apps_script_48dp.png",
+      "homepageTrigger": {
+        "runFunction": "onHomepage"
+      }
     },
     "calendar": {
       "eventOpenTrigger": {

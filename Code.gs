@@ -11,7 +11,7 @@ var SLACK_API = 'https://slack.com/api/';
 // Bumped whenever behaviour changes. Open the web app URL in a browser to see which
 // version that deployment is actually serving — deployments pin a snapshot, so a stale
 // one is the usual reason the extension misbehaves while the sidebar works.
-var VERSION = '7-eid-shapes';
+var VERSION = '8-settings-card';
 
 /* ---------- core ---------- */
 
@@ -97,12 +97,60 @@ function createUniqueChannel(name) {
   return { ok: false, error: 'name_taken' };
 }
 
+/* ---------- settings ---------- */
+
+/**
+ * Shown when the add-on is opened outside an event. Keeps setup in the UI rather than
+ * sending people into Project Settings to hand-edit Script Properties.
+ */
+function onHomepage() {
+  var properties = PropertiesService.getScriptProperties();
+  var secret = properties.getProperty('SHARED_SECRET');
+
+  var section = CardService.newCardSection()
+    .addWidget(CardService.newTextParagraph().setText(
+      'Slack token: ' + (slackToken() ? 'configured' : 'not set') + '<br>' +
+      'Extension secret: ' + (secret ? 'configured' : 'not set')))
+    .addWidget(CardService.newTextInput()
+      .setFieldName('token')
+      .setTitle('Slack user token (xoxp-…)')
+      .setHint('Leave blank to keep the current one.'))
+    .addWidget(CardService.newTextInput()
+      .setFieldName('secret')
+      .setTitle('Extension shared secret')
+      .setHint('Only needed for the Chrome extension.')
+      .setValue(secret || Utilities.getUuid()))
+    .addWidget(CardService.newTextButton()
+      .setText('Save')
+      .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+      .setOnClickAction(CardService.newAction().setFunctionName('saveSettings')));
+
+  return CardService.newCardBuilder()
+    .setHeader(CardService.newCardHeader().setTitle('Calendar to Slack').setSubtitle('Version ' + VERSION))
+    .addSection(section)
+    .build();
+}
+
+function saveSettings(e) {
+  var properties = PropertiesService.getScriptProperties();
+  var token = (e.formInput.token || '').trim();
+  var secret = (e.formInput.secret || '').trim();
+
+  if (token) properties.setProperty('SLACK_USER_TOKEN', token);
+  if (secret) properties.setProperty('SHARED_SECRET', secret);
+
+  if (!token) return toast('Saved.');
+
+  var identity = slack('auth.test');
+  return toast(identity.ok ? 'Saved — connected as ' + identity.user + '.' : 'Saved, but Slack says: ' + identity.error);
+}
+
 /* ---------- front door 1: the Calendar side panel ---------- */
 
 /** Renders the side-panel card when a Calendar event is opened. */
 function onEventOpen(e) {
   if (!slackToken()) {
-    return notice('Not configured', 'Set SLACK_BOT_TOKEN in Script Properties — see the README.');
+    return notice('Not configured', 'Open this add-on outside an event to paste your Slack token.');
   }
 
   var emails = guestEmails(e);
