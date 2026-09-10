@@ -31,6 +31,8 @@ Under OAuth & Permissions, add these three scopes:
 | `groups:write` | create the private channel and invite people to it |
 | `users:read` | read the workspace member list |
 | `users:read.email` | match calendar guests to Slack accounts by email |
+| `mpim:write` | open a group DM when the workspace forbids creating channels |
+| `chat:write` | name the meeting in that group DM, which otherwise has no title |
 
 Add them as User Token Scopes, not Bot Token Scopes. Most workspaces restrict channel creation, and
 Slack applies that policy to apps — a bot token then fails with `restricted_action` no matter what
@@ -117,6 +119,11 @@ just starts blank instead of prefilled, and nothing else changes.
 - Meeting rooms and resource calendars are filtered out; external guests and ex-employees are skipped
   because they have no Slack account to match.
 - If the channel name is taken, it retries with `-2`, `-3`, and so on up to `-5`.
+- Many workspaces — Enterprise Grid ones especially — forbid creating channels via the API, returning
+  `restricted_action` even for a user token belonging to someone who can create channels by hand. The
+  tool then opens a group DM with the same people instead. That holds nine people including you, has
+  no name or topic, and can't be archived. Lift the org's channel-creation restriction and it goes
+  back to making real channels with no code change.
 
 ## Licence
 

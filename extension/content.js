@@ -54,7 +54,8 @@ async function onClick(button, guests, title) {
   }
 
   if (result && result.ok) {
-    button.textContent = `#${result.channel} created`;
+    button.textContent = result.summary;
+    button.title = result.summary;
     return;
   }
 

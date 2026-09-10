@@ -25,6 +25,10 @@ function makeChannel(emails, name) {
   if (!ids.length) return { ok: false, error: 'None of these guests are in this Slack workspace.' };
 
   var created = createUniqueChannel(name);
+
+  // Many workspaces (Enterprise Grid especially) forbid channel creation outright.
+  // A group DM is governed by no such policy, so fall back rather than fail.
+  if (!created.ok && created.error === 'restricted_action') return openGroupDm(ids, name);
   if (!created.ok) return { ok: false, error: 'Slack rejected it: ' + created.error };
 
   // Whoever the token belongs to is already in the channel; inviting them fails the whole call.
@@ -33,7 +37,39 @@ function makeChannel(emails, name) {
     slack('conversations.invite', { channel: created.channel.id, users: invitees.join(',') });
   }
 
-  return { ok: true, channel: created.channel.name, members: ids.length };
+  return {
+    ok: true,
+    kind: 'channel',
+    members: ids.length,
+    summary: '#' + created.channel.name + ' created with ' + ids.length + ' member' + plural(ids.length)
+  };
+}
+
+/** Fallback when channel creation is blocked. Group DMs hold nine people, the caller included. */
+function openGroupDm(ids, title) {
+  var me = slack('auth.test');
+  var others = ids.filter(function (id) { return id !== me.user_id; });
+
+  if (!others.length) return { ok: false, error: 'No one else on this meeting is in Slack.' };
+  if (others.length > 8) {
+    return {
+      ok: false,
+      error: 'Channels are blocked in this workspace and a group DM holds only 9 — this meeting needs ' +
+        (others.length + 1) + '.'
+    };
+  }
+
+  var opened = slack('conversations.open', { users: others.join(','), return_im: false });
+  if (!opened.ok) return { ok: false, error: 'Slack rejected it: ' + opened.error };
+
+  if (title) slack('chat.postMessage', { channel: opened.channel.id, text: 'Group for *' + title + '*' });
+
+  return {
+    ok: true,
+    kind: 'group DM',
+    members: others.length + 1,
+    summary: 'Group DM opened with ' + (others.length + 1) + ' people'
+  };
 }
 
 /** Creates the channel, adding a numeric suffix if the name is already taken. */
@@ -85,9 +121,7 @@ function onEventOpen(e) {
 /** Card button handler. */
 function createChannel(e) {
   var result = makeChannel(e.parameters.emails.split(','), e.formInput.channel || '');
-  return toast(result.ok
-    ? '#' + result.channel + ' created with ' + result.members + ' member' + plural(result.members) + '.'
-    : result.error);
+  return toast(result.ok ? result.summary + '.' : result.error);
 }
 
 /* ---------- front door 2: the Chrome extension ---------- */
