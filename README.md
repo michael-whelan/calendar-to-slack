@@ -32,7 +32,6 @@ Under OAuth & Permissions, add these three scopes:
 | `users:read` | read the workspace member list |
 | `users:read.email` | match calendar guests to Slack accounts by email |
 | `mpim:write` | open a group DM when the workspace forbids creating channels |
-| `chat:write` | name the meeting in that group DM, which otherwise has no title |
 
 Add them as User Token Scopes, not Bot Token Scopes. Most workspaces restrict channel creation, and
 Slack applies that policy to apps — a bot token then fails with `restricted_action` no matter what

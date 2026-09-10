@@ -11,7 +11,7 @@ var SLACK_API = 'https://slack.com/api/';
 // Bumped whenever behaviour changes. Open the web app URL in a browser to see which
 // version that deployment is actually serving — deployments pin a snapshot, so a stale
 // one is the usual reason the extension misbehaves while the sidebar works.
-var VERSION = '5-open-on-create';
+var VERSION = '6-event-id-lookup';
 
 /* ---------- core ---------- */
 
@@ -36,7 +36,7 @@ function makeChannel(emails, name) {
 
   // Many workspaces (Enterprise Grid especially) forbid channel creation outright.
   // A group DM is governed by no such policy, so fall back rather than fail.
-  if (!created.ok && created.error === 'restricted_action') return openGroupDm(me, ids, name);
+  if (!created.ok && created.error === 'restricted_action') return openGroupDm(me, ids);
   if (!created.ok) return { ok: false, error: slackError(created) };
 
   // Whoever the token belongs to is already in the channel; inviting them fails the whole call.
@@ -55,7 +55,7 @@ function makeChannel(emails, name) {
 }
 
 /** Fallback when channel creation is blocked. Group DMs hold nine people, the caller included. */
-function openGroupDm(me, ids, title) {
+function openGroupDm(me, ids) {
   var others = ids.filter(function (id) { return id !== me.user_id; });
 
   if (!others.length) return { ok: false, error: 'No one else on this meeting is in Slack.' };
@@ -69,8 +69,6 @@ function openGroupDm(me, ids, title) {
 
   var opened = slack('conversations.open', { users: others.join(','), return_im: false });
   if (!opened.ok) return { ok: false, error: slackError(opened) };
-
-  if (title) slack('chat.postMessage', { channel: opened.channel.id, text: 'Group for *' + title + '*' });
 
   return {
     ok: true,
@@ -165,7 +163,35 @@ function doPost(request) {
   }
 
   if (!expected || body.secret !== expected) return json({ ok: false, error: 'Unauthorized.' });
-  return json(makeChannel(body.emails || [], body.title || ''));
+
+  var emails = body.emails || [];
+  var title = body.title || '';
+
+  // An event id is the reliable path: Calendar's popup stops rendering individual
+  // guests on large meetings, so anything scraped from it undercounts.
+  if (body.eventId) {
+    var event = readEvent(body.eventId, body.calendarId);
+    if (event.error) return json({ ok: false, error: event.error });
+    emails = event.emails;
+    title = title || event.title;
+  }
+
+  return json(makeChannel(emails, title));
+}
+
+/** The authoritative guest list for an event, straight from Calendar. */
+function readEvent(eventId, calendarId) {
+  try {
+    var event = Calendar.Events.get(calendarId || 'primary', eventId);
+    var emails = (event.attendees || [])
+      .filter(function (guest) { return guest.email && !guest.resource; })
+      .map(function (guest) { return guest.email; });
+
+    if (event.organizer && event.organizer.email) emails.push(event.organizer.email);
+    return { emails: dedupe(emails), title: event.summary || '' };
+  } catch (err) {
+    return { error: 'Could not read that event: ' + err.message };
+  }
 }
 
 /* ---------- diagnostics ---------- */
@@ -206,7 +232,11 @@ function guestEmails(e) {
     .map(function (guest) { return guest.email; });
 
   if (calendar.organizer && calendar.organizer.email) emails.push(calendar.organizer.email);
-  return emails.filter(function (email, i, all) { return all.indexOf(email) === i; });
+  return dedupe(emails);
+}
+
+function dedupe(emails) {
+  return emails.filter(function (email, i, all) { return email && all.indexOf(email) === i; });
 }
 
 /** Meeting title, used only to prefill the name field. Blank if the scope is absent. */
