@@ -110,6 +110,34 @@ function doPost(request) {
   return json(makeChannel(body.emails || [], body.title || ''));
 }
 
+/* ---------- diagnostics ---------- */
+
+/**
+ * Run this from the Apps Script editor when Slack rejects something. It reports which
+ * token is in use, who Slack thinks you are, and the raw reply to a real create attempt.
+ * It leaves a throwaway channel behind if creation succeeds.
+ */
+function diagnose() {
+  var properties = PropertiesService.getScriptProperties();
+  var identity = slack('auth.test');
+
+  Logger.log('SLACK_USER_TOKEN present: %s', !!properties.getProperty('SLACK_USER_TOKEN'));
+  Logger.log('SLACK_BOT_TOKEN present: %s', !!properties.getProperty('SLACK_BOT_TOKEN'));
+  Logger.log('token in use starts with: %s', String(slackToken()).slice(0, 5));
+  Logger.log('auth.test: %s', JSON.stringify(identity));
+  Logger.log('acting as a bot: %s', !!identity.bot_id);
+
+  var attempt = slack('conversations.create', {
+    name: 'c2s-selftest-' + Date.now(),
+    is_private: true
+  });
+  Logger.log('conversations.create: %s', JSON.stringify(attempt));
+
+  if (!attempt.ok) {
+    Logger.log('needed scope (if any): %s', attempt.needed || 'n/a');
+  }
+}
+
 /* ---------- helpers ---------- */
 
 /** Guest addresses on the event, minus meeting rooms and duplicates. */
