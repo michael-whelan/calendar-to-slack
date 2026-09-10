@@ -8,6 +8,11 @@
 
 var SLACK_API = 'https://slack.com/api/';
 
+// Bumped whenever behaviour changes. Open the web app URL in a browser to see which
+// version that deployment is actually serving — deployments pin a snapshot, so a stale
+// one is the usual reason the extension misbehaves while the sidebar works.
+var VERSION = '3-group-dm-fallback';
+
 /* ---------- core ---------- */
 
 /** Resolves guests to Slack users, creates the private channel, invites them. */
@@ -130,6 +135,11 @@ function createChannel(e) {
  * Web-app endpoint. Deploy as a web app (execute as yourself, access "Anyone") and
  * set SHARED_SECRET in Script Properties — that secret is the only thing guarding it.
  */
+/** Version probe. Carries no data and needs no secret — open the /exec URL in a browser. */
+function doGet() {
+  return json({ ok: true, version: VERSION });
+}
+
 function doPost(request) {
   var expected = PropertiesService.getScriptProperties().getProperty('SHARED_SECRET');
   var body;
