@@ -34,7 +34,7 @@ function makeChannel(emails, name) {
   // Many workspaces (Enterprise Grid especially) forbid channel creation outright.
   // A group DM is governed by no such policy, so fall back rather than fail.
   if (!created.ok && created.error === 'restricted_action') return openGroupDm(ids, name);
-  if (!created.ok) return { ok: false, error: 'Slack rejected it: ' + created.error };
+  if (!created.ok) return { ok: false, error: slackError(created) };
 
   // Whoever the token belongs to is already in the channel; inviting them fails the whole call.
   var invitees = ids.filter(function (id) { return id !== created.channel.creator; });
@@ -65,7 +65,7 @@ function openGroupDm(ids, title) {
   }
 
   var opened = slack('conversations.open', { users: others.join(','), return_im: false });
-  if (!opened.ok) return { ok: false, error: 'Slack rejected it: ' + opened.error };
+  if (!opened.ok) return { ok: false, error: slackError(opened) };
 
   if (title) slack('chat.postMessage', { channel: opened.channel.id, text: 'Group for *' + title + '*' });
 
@@ -223,6 +223,12 @@ function slack(method, payload) {
  * applies their permissions and no bot lingers in every channel. Falls back to a bot
  * token (xoxb-), which many workspaces block from creating channels at all.
  */
+/** Slack names the missing scope on a rejection; carry that through instead of dropping it. */
+function slackError(response) {
+  return 'Slack rejected it: ' + response.error +
+    (response.needed ? ' (needs ' + response.needed + ')' : '');
+}
+
 function slackToken() {
   var properties = PropertiesService.getScriptProperties();
   return properties.getProperty('SLACK_USER_TOKEN') || properties.getProperty('SLACK_BOT_TOKEN');
