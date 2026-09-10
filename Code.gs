@@ -11,7 +11,7 @@ var SLACK_API = 'https://slack.com/api/';
 // Bumped whenever behaviour changes. Open the web app URL in a browser to see which
 // version that deployment is actually serving — deployments pin a snapshot, so a stale
 // one is the usual reason the extension misbehaves while the sidebar works.
-var VERSION = '4-scope-detail';
+var VERSION = '5-open-on-create';
 
 /* ---------- core ---------- */
 
@@ -21,6 +21,9 @@ function makeChannel(emails, name) {
 
   name = slugify(name);
   if (!name) return { ok: false, error: 'Give the channel a name first.' };
+
+  var me = slack('auth.test');
+  if (!me.ok) return { ok: false, error: slackError(me) };
 
   var ids = emails
     .map(function (email) { return slack('users.lookupByEmail?email=' + encodeURIComponent(email)); })
@@ -33,7 +36,7 @@ function makeChannel(emails, name) {
 
   // Many workspaces (Enterprise Grid especially) forbid channel creation outright.
   // A group DM is governed by no such policy, so fall back rather than fail.
-  if (!created.ok && created.error === 'restricted_action') return openGroupDm(ids, name);
+  if (!created.ok && created.error === 'restricted_action') return openGroupDm(me, ids, name);
   if (!created.ok) return { ok: false, error: slackError(created) };
 
   // Whoever the token belongs to is already in the channel; inviting them fails the whole call.
@@ -46,13 +49,13 @@ function makeChannel(emails, name) {
     ok: true,
     kind: 'channel',
     members: ids.length,
+    url: conversationUrl(me, created.channel.id),
     summary: '#' + created.channel.name + ' created with ' + ids.length + ' member' + plural(ids.length)
   };
 }
 
 /** Fallback when channel creation is blocked. Group DMs hold nine people, the caller included. */
-function openGroupDm(ids, title) {
-  var me = slack('auth.test');
+function openGroupDm(me, ids, title) {
   var others = ids.filter(function (id) { return id !== me.user_id; });
 
   if (!others.length) return { ok: false, error: 'No one else on this meeting is in Slack.' };
@@ -73,8 +76,14 @@ function openGroupDm(ids, title) {
     ok: true,
     kind: 'group DM',
     members: others.length + 1,
+    url: conversationUrl(me, opened.channel.id),
     summary: 'Group DM opened with ' + (others.length + 1) + ' people'
   };
+}
+
+/** Deep link to the conversation. Opens the desktop app when it's installed. */
+function conversationUrl(me, channelId) {
+  return me.url.replace(/\/$/, '') + '/archives/' + channelId;
 }
 
 /** Creates the channel, adding a numeric suffix if the name is already taken. */
@@ -126,7 +135,12 @@ function onEventOpen(e) {
 /** Card button handler. */
 function createChannel(e) {
   var result = makeChannel(e.parameters.emails.split(','), e.formInput.channel || '');
-  return toast(result.ok ? result.summary + '.' : result.error);
+  if (!result.ok) return toast(result.error);
+
+  return CardService.newActionResponseBuilder()
+    .setNotification(CardService.newNotification().setText(result.summary + '.'))
+    .setOpenLink(CardService.newOpenLink().setUrl(result.url))
+    .build();
 }
 
 /* ---------- front door 2: the Chrome extension ---------- */

@@ -4,7 +4,12 @@
  */
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
-  createChannel(message).then(respond);
+  createChannel(message).then((result) => {
+    // Opened from here rather than the content script: a background tab creation
+    // isn't subject to the popup blocker once the user gesture has expired.
+    if (result.ok && result.url) chrome.tabs.create({ url: result.url });
+    respond(result);
+  });
   return true; // keep the message channel open for the async reply
 });
 
