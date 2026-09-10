@@ -13,11 +13,15 @@ async function createChannel({ emails, title }) {
   if (!endpoint) return { ok: false, error: 'Set the endpoint in extension options' };
 
   try {
+    console.log('Posting to', endpoint, 'for', emails.length, 'guests');
+
     const response = await fetch(endpoint, {
       method: 'POST',
       // text/plain dodges the CORS preflight, which Apps Script web apps don't answer.
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ secret, emails, title })
+      body: JSON.stringify({ secret, emails, title }),
+      // Without this a stalled request leaves the button on "Creating…" forever.
+      signal: AbortSignal.timeout(25000)
     });
 
     // A login page or an Apps Script error comes back as HTML, not JSON — say so plainly.
