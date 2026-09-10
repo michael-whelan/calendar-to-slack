@@ -11,7 +11,7 @@ var SLACK_API = 'https://slack.com/api/';
 // Bumped whenever behaviour changes. Open the web app URL in a browser to see which
 // version that deployment is actually serving — deployments pin a snapshot, so a stale
 // one is the usual reason the extension misbehaves while the sidebar works.
-var VERSION = '3-group-dm-fallback';
+var VERSION = '4-scope-detail';
 
 /* ---------- core ---------- */
 
