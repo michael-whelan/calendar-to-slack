@@ -8,10 +8,9 @@
 
 var SLACK_API = 'https://slack.com/api/';
 
-// Bumped whenever behaviour changes. Open the web app URL in a browser to see which
-// version that deployment is actually serving — deployments pin a snapshot, so a stale
-// one is the usual reason the extension misbehaves while the sidebar works.
-var VERSION = '10-user-scoped-tokens';
+// Bumped whenever behaviour changes. Shown on the settings card, so a support report
+// names the build it came from.
+var VERSION = '11-marketplace';
 
 /* ---------- core ---------- */
 
@@ -149,14 +148,49 @@ function slackCallback(request) {
 
   var token = response.authed_user && response.authed_user.access_token;
   if (!response.ok || !token) {
-    return HtmlService.createHtmlOutput('<p>Slack refused: ' + (response.error || 'no token returned') + '</p>');
+    return page('Slack could not connect', slackConnectError(response.error));
   }
 
   PropertiesService.getUserProperties().setProperty('SLACK_USER_TOKEN', token);
-  return HtmlService.createHtmlOutput('<p>Connected. Close this tab and reopen the meeting.</p>');
+  return page('Connected', 'Close this tab and reopen the meeting in Google Calendar.');
 }
 
+/**
+ * Slack's OAuth errors are terse codes. Translate the ones a normal user can actually hit;
+ * carry anything else through verbatim rather than inventing an explanation for it.
+ */
+function slackConnectError(code) {
+  if (code === 'access_denied') {
+    return 'The request was declined. If your workspace sends new apps to an admin for ' +
+      'approval, you can try again once it is approved.';
+  }
+  if (code === 'invalid_scope' || code === 'invalid_scope_requested') {
+    return 'Your workspace does not permit one of the permissions this add-on needs.';
+  }
+  return 'Slack said: ' + (code || 'no token returned') + '.';
+}
+
+/** Minimal styled page for the OAuth round trip — this is the only HTML the add-on serves. */
+function page(title, body) {
+  return HtmlService.createHtmlOutput(
+    '<div style="font:400 14px/22px Roboto,Arial,sans-serif;color:#202124;padding:32px;max-width:32em">' +
+    '<h2 style="font-weight:500;margin:0 0 8px">' + title + '</h2>' +
+    '<p style="margin:0;color:#5f6368">' + body + '</p></div>');
+}
+
+/**
+ * Revokes the token at Slack before forgetting it. Deleting our copy alone would leave a
+ * live credential sitting in the workspace's installed-apps list with no way to reach it.
+ */
 function disconnectSlack() {
+  if (slackToken()) {
+    try {
+      slack('auth.revoke');
+    } catch (err) {
+      // Already revoked, or Slack is unreachable. Drop our copy regardless.
+    }
+  }
+
   PropertiesService.getUserProperties().deleteProperty('SLACK_USER_TOKEN');
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification().setText('Disconnected from Slack.'))
@@ -174,13 +208,27 @@ function onHomepage() {
   var section = CardService.newCardSection();
 
   if (!slackToken()) {
-    section
-      .addWidget(CardService.newTextParagraph().setText(
-        'Connect your Slack account once, and every meeting gets a one-click chat.'))
-      .addWidget(CardService.newTextButton()
-        .setText('Connect Slack')
-        .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
-        .setOpenLink(CardService.newOpenLink().setUrl(slackAuthorizeUrl())));
+    var authorizeUrl = slackAuthorizeUrl();
+
+    if (!authorizeUrl) {
+      section.addWidget(CardService.newTextParagraph().setText(
+        'This installation is missing its Slack credentials. Please report it at ' +
+        'github.com/michael-whelan/calendar-to-slack/issues.'));
+    } else {
+      section
+        .addWidget(CardService.newTextParagraph().setText(
+          'Connect your Slack account once, and every meeting gets a one-click chat.'))
+        .addWidget(CardService.newTextButton()
+          .setText('Connect Slack')
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+          .setOpenLink(CardService.newOpenLink().setUrl(authorizeUrl)))
+        // Most workspaces route app installs through an admin. Saying so up front turns a
+        // dead end into an expected wait, and it is the commonest reason connecting fails.
+        .addWidget(CardService.newTextParagraph().setText(
+          '<font color="#5f6368"><i>If your workspace requires approval for new apps, ' +
+          'Slack will send your request to an admin and you can connect once they approve ' +
+          'it.</i></font>'));
+    }
   } else {
     var identity = slack('auth.test');
     section
@@ -243,8 +291,13 @@ function createChannel(e) {
 /* ---------- front door 2: the Chrome extension ---------- */
 
 /**
- * Web-app endpoint. Deploy as a web app (execute as yourself, access "Anyone") and
- * set SHARED_SECRET in Script Properties — that secret is the only thing guarding it.
+ * NOT DEPLOYED in the published add-on. The manifest carries no `webapp` block, so nothing
+ * below is reachable — it is kept for the Chrome extension, which is on hold.
+ *
+ * Before reviving it: the old deployment ran as USER_DEPLOYING with anonymous access, which
+ * means every caller acted as whoever deployed it — one person's Slack token and one
+ * person's calendar for the whole org. A public version has to run as USER_ACCESSING and
+ * authenticate the caller (chrome.identity bearer token), not a shared secret.
  */
 /** Version probe. Carries no data and needs no secret — open the /exec URL in a browser. */
 function doGet() {
@@ -326,11 +379,9 @@ function decodeEid(eventId) {
  * It leaves a throwaway channel behind if creation succeeds.
  */
 function diagnose() {
-  var properties = PropertiesService.getScriptProperties();
   var identity = slack('auth.test');
 
-  Logger.log('SLACK_USER_TOKEN present: %s', !!properties.getProperty('SLACK_USER_TOKEN'));
-  Logger.log('SLACK_BOT_TOKEN present: %s', !!properties.getProperty('SLACK_BOT_TOKEN'));
+  Logger.log('token present for this user: %s', !!slackToken());
   Logger.log('token in use starts with: %s', String(slackToken()).slice(0, 5));
   Logger.log('auth.test: %s', JSON.stringify(identity));
   Logger.log('acting as a bot: %s', !!identity.bot_id);

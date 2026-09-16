@@ -20,14 +20,10 @@
   "urlFetchWhitelist": [
     "https://slack.com/api/"
   ],
-  "webapp": {
-    "executeAs": "USER_DEPLOYING",
-    "access": "ANYONE_ANONYMOUS"
-  },
   "addOns": {
     "common": {
       "name": "Calendar to Slack",
-      "logoUrl": "https://www.gstatic.com/images/branding/product/1x/apps_script_48dp.png",
+      "logoUrl": "https://michael-whelan.github.io/calendar-to-slack/assets/logo-128.png",
       "homepageTrigger": {
         "runFunction": "onHomepage"
       }
