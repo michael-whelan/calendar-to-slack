@@ -1,106 +1,40 @@
 # Calendar to Slack
 
-A button in the Google Calendar side panel that turns a meeting's guest list into a private Slack
-channel. No typing names. Guests who aren't in your Slack workspace are skipped silently.
+Turns a meeting's guest list into a private Slack channel, from the Google Calendar side
+panel. No typing names, no copying addresses. Guests who aren't in your Slack workspace are
+skipped silently.
 
-It's a Google Workspace Add-on written in Apps Script — no server, no hosting, no database. Each
-company deploys its own copy with its own Slack app, so no one's tokens ever leave their workspace.
+## Install
 
-## Using it
+1. Install from the Google Workspace Marketplace — listing link pending review.
+2. Open [Google Calendar](https://calendar.google.com) and click any meeting.
+3. In the add-on strip down the far right edge — the one holding Tasks, Keep and Contacts —
+   click the Calendar to Slack icon. If the strip isn't showing, expand the side panel with
+   the arrow at the bottom right.
+4. First run only: click Connect Slack and approve the permissions. If your workspace sends
+   new apps to an admin for approval, Slack forwards the request and you can connect once
+   it's approved.
+5. The card shows the guest count and prefills a channel name from the meeting title. Edit
+   it if you like, then click Create private channel.
 
-1. Open [Google Calendar](https://calendar.google.com) and click a meeting to open it.
-2. In the add-on strip down the far right edge of the screen — the same one holding Tasks, Keep and
-   Contacts — click the Calendar to Slack icon. If the strip isn't visible, expand the side panel
-   with the arrow at the bottom right.
-3. The card shows how many guests are on the meeting and prefills a channel name from its title.
-   Edit the name if you want.
-4. Click Create private channel. The channel exists in Slack by the time the confirmation appears.
+There is nothing to deploy, no script to run, and no token to paste. Each person connects
+their own Slack account; nobody acts on anyone else's behalf.
 
-## Setup
+## What it does
 
-Takes about 15 minutes. You need to be able to create a Slack app in your workspace.
+It matches calendar guests to Slack accounts by email address, creates a private channel,
+and invites everyone it matched. The channel is created by you, as you — the add-on holds no
+bot that sits in your channels afterwards.
 
-### 1. Create the Slack app
+If the channel name is already taken it retries with `-2`, `-3`, and so on up to `-5`.
 
-At [api.slack.com/apps](https://api.slack.com/apps) → Create New App → From scratch.
+Many workspaces, Enterprise Grid ones especially, forbid creating channels through the API
+even for someone who can create them by hand. Slack returns `restricted_action`, and the
+add-on opens a group DM with the same people instead. That holds nine people including you,
+has no name or topic, and can't be archived. Lifting the workspace restriction restores real
+channels with no change here.
 
-Under OAuth & Permissions, add these three scopes:
-
-| Scope | Why |
-| --- | --- |
-| `groups:write` | create the private channel and invite people to it |
-| `users:read` | read the workspace member list |
-| `users:read.email` | match calendar guests to Slack accounts by email |
-| `mpim:write` | open a group DM when the workspace forbids creating channels |
-
-Add them as User Token Scopes, not Bot Token Scopes. Most workspaces restrict channel creation, and
-Slack applies that policy to apps — a bot token then fails with `restricted_action` no matter what
-scopes it holds. A user token acts as you, so it inherits your own permissions, and it leaves no bot
-sitting in every channel it creates.
-
-Install the app to your workspace and copy the User OAuth Token (starts with `xoxp-`).
-
-Use a Bot Token Scope setup instead only if your workspace lets apps create channels and you'd rather
-the channels not be attributed to a person. The code accepts either.
-
-### 2. Run the setup script
-
-```sh
-npm install -g @google/clasp
-./setup.sh
-```
-
-It logs you in if needed, creates the Apps Script project, pushes the code, deploys the web app, and
-prints the endpoint URL plus whatever is left to do by hand. Safe to re-run — it reuses the existing
-project when `.clasp.json` is already there.
-
-### 3. Install and paste the token
-
-In the Apps Script editor: Deploy → Test deployments → Install.
-
-Reload Google Calendar and open the add-on from the right-hand strip with no event selected. That
-shows the settings card: paste the `xoxp-` token, click Save, and it confirms which Slack account it
-connected as. Nothing needs editing in Project Settings.
-
-To give it to your whole company rather than just yourself, publish it as a private Workspace
-Marketplace app: Deploy → New deployment → Add-on, then follow
-[Publish a private app](https://developers.google.com/workspace/marketplace/how-to-publish). Your
-Google Workspace admin installs it once for everyone, and no Google review is required for private
-domain-only publishing.
-
-To give it to your whole company instead of just yourself, publish it as a private Workspace
-Marketplace app: Deploy → New deployment → Add-on, then follow
-[Publish a private app](https://developers.google.com/workspace/marketplace/how-to-publish). Your
-Google Workspace admin installs it once for everyone. No Google review is required for private
-domain-only publishing.
-
-## Optional: a button in the event popup (Chrome extension)
-
-The add-on can only live in Calendar's side panel — Google exposes no way to put a control in the
-event popup itself. The `extension/` directory works around that by injecting a button into the
-popup. It holds no Slack credentials: it posts the guest list to the Apps Script project, which does
-the work with the token it already has.
-
-This is a DOM hack against markup Google doesn't guarantee. Expect it to need a fix whenever Calendar
-is reskinned; the fragile parts are isolated in the `read*` functions in `content.js`. It prefers
-Calendar's event id and lets the server fetch the real guest list, because the popup stops rendering
-individual guests on large meetings — where no id is found and guests are hidden, the button disables
-itself rather than create the wrong conversation.
-
-`setup.sh` already deployed the endpoint and printed its URL; the settings card holds the shared
-secret, generated for you.
-
-1. In Chrome: `chrome://extensions` → enable Developer mode → Load unpacked → pick `extension/`.
-2. Click the extension's Details → Extension options, and paste the endpoint URL and the secret.
-
-Reload Calendar and open a meeting. The button appears in the popup next to the title.
-
-Access *Anyone* means the endpoint is reachable by anyone who has the URL, with the shared secret as
-the only check. That's a deliberate trade for keeping the extension credential-free and serverless.
-If that isn't acceptable in your organisation, don't deploy the web app — the side-panel add-on needs
-none of this.
-
-## Scopes it asks for
+## What it can see
 
 | Scope | Why |
 | --- | --- |
@@ -109,21 +43,49 @@ none of this.
 | `calendar.events.readonly` | read the meeting title, to prefill the channel name |
 | `script.external_request` | call the Slack API |
 
-Only the open event's guests are ever read. If you'd rather not grant `calendar.events.readonly`,
-delete that line from `appsscript.json` along with the `dependencies` block — the channel name field
-just starts blank instead of prefilled, and nothing else changes.
+Only the guests of the event you currently have open are ever read. Guest addresses are sent
+to Slack to look up matching accounts and are not stored.
+
+On the Slack side it asks for `groups:write` to create the channel and invite people,
+`users:read` and `users:read.email` to match guests to accounts, and `mpim:write` for the
+group DM fallback. These are user token scopes, not bot scopes, so the add-on inherits your
+own permissions rather than holding broader ones.
+
+## Your data
+
+Your Slack token is stored against your own Google account in Apps Script user properties.
+No other user of the add-on can read it, and neither can your administrator or the
+maintainer. Disconnecting revokes it at Slack and deletes the stored copy.
+
+Full detail in the [privacy policy](docs/privacy.md) and [terms](docs/terms.md).
 
 ## Known limits
 
 - Calendar add-ons render on the web and in the Android Calendar app. Not iOS.
-- Meeting rooms and resource calendars are filtered out; external guests and ex-employees are skipped
-  because they have no Slack account to match.
-- If the channel name is taken, it retries with `-2`, `-3`, and so on up to `-5`.
-- Many workspaces — Enterprise Grid ones especially — forbid creating channels via the API, returning
-  `restricted_action` even for a user token belonging to someone who can create channels by hand. The
-  tool then opens a group DM with the same people instead. That holds nine people including you, has
-  no name or topic, and can't be archived. Lift the org's channel-creation restriction and it goes
-  back to making real channels with no code change.
+- Meeting rooms and resource calendars are filtered out. External guests and former
+  colleagues are skipped, having no Slack account in your workspace to match.
+- A group DM, used when channel creation is blocked, tops out at nine people.
+
+## Development
+
+`Code.gs` holds everything; `appsscript.json` is the add-on manifest. There is no build step.
+
+`tools/release.sh` pushes the current working tree, cuts a version, and points the add-on
+deployment at it. It is maintainer tooling — nobody installing the add-on ever runs it.
+
+`tools/make-icons.py` regenerates the Marketplace listing icons into `docs/assets/`.
+
+Two script properties must be set on the Apps Script project for the OAuth flow to work:
+`SLACK_CLIENT_ID` and `SLACK_CLIENT_SECRET`, from the Slack app at
+[api.slack.com/apps](https://api.slack.com/apps).
+
+`docs/publishing.md` is the console checklist for getting the listing live — Cloud project,
+OAuth consent screen, verification, listing assets, Slack distribution.
+
+The `extension/` directory is a Chrome extension that injects the same button into the event
+popup. It is on hold and not part of the published add-on: it depended on a web app
+deployment that ran as whoever deployed it, which is wrong for a public install. Reviving it
+means authenticating the caller properly. See the note above `doGet` in `Code.gs`.
 
 ## Licence
 
