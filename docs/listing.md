@@ -107,9 +107,12 @@ Suggested captions, if the form asks:
     2. One click. The channel exists before the confirmation clears.
     3. Connect your own Slack account once. Disconnect revokes it.
 
-The toast in shot 2 clears within a few seconds and creating opens Slack in a new tab, which
-takes the focus, so it is difficult to catch by hand. Use `tools/delayed-capture.sh 6`, switch
-to Calendar, and click while the timer runs.
+Run `tools/capture-listing.sh` to walk all three: it prints what to put on screen, counts
+down, captures, and fits the result to 1280x800 in `docs/assets/screenshots/`. Pass shot
+numbers to redo only some, e.g. `tools/capture-listing.sh 2`.
+
+The countdown exists for shot 2 — the toast clears in a few seconds and creating opens Slack
+in a new tab, which takes the focus, so it cannot be caught with a keyboard shortcut.
 
 ## Scope justifications
 
