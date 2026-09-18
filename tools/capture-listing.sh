@@ -51,7 +51,9 @@ for n in "${wanted[@]}"; do
   echo "Capturing in ${DELAY}s — switch to Calendar now."
   screencapture -T "$DELAY" -x "$target"
 
-  "$ROOT/tools/fit-screenshot.sh" "$target" >/dev/null
+  # Crop rather than pad: bars down a listing image look unfinished, and anchoring right
+  # keeps the add-on panel while trimming the calendar's left rail.
+  "$ROOT/tools/fit-screenshot.sh" --crop right "$target" >/dev/null
   fitted="${target%.*}-1280x800.png"
   mv "$fitted" "$target"
   echo "Wrote $target"
