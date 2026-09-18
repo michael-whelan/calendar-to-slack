@@ -71,8 +71,15 @@ All in `docs/assets/`, regenerate with `python3 tools/make-icons.py`.
     Icon 96x96         logo-96.png        only needed if a web app ships again
     Banner 220x140     banner-220x140.png
 
-Screenshots are not generated — Google wants real captures of the add-on running. Take these
-three at any size and run `tools/fit-screenshot.sh <files>` to fit them to 1280x800:
+Screenshots are not generated — Google wants real captures of the add-on running.
+
+Capture them in a throwaway environment, not in Biorce. Two reasons: these go on a public
+page, so a real meeting title and real colleague addresses would be published with them; and
+Biorce's Slack forbids creating channels, so the only thing capturable there is the group-DM
+fallback rather than the private channel this listing leads with. A free Slack workspace and
+a calendar meeting with two or three accounts you control solves both.
+
+Take these three, then run `tools/fit-screenshot.sh <files>` to fit them to 1280x800:
 
 1. The side panel open on a meeting, showing the guest count and the prefilled channel name.
 2. The confirmation toast naming the channel it created.
@@ -83,6 +90,10 @@ Suggested captions, if the form asks:
     1. Open a meeting, and the add-on has already read the guest list.
     2. One click. The channel exists before the confirmation clears.
     3. Connect your own Slack account once. Disconnect revokes it.
+
+The toast in shot 2 clears within a few seconds and creating opens Slack in a new tab, which
+takes the focus, so it is difficult to catch by hand. Use `tools/delayed-capture.sh 6`, switch
+to Calendar, and click while the timer runs.
 
 ## Scope justifications
 
