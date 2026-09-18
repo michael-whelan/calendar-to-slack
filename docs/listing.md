@@ -79,6 +79,22 @@ Biorce's Slack forbids creating channels, so the only thing capturable there is 
 fallback rather than the private channel this listing leads with. A free Slack workspace and
 a calendar meeting with two or three accounts you control solves both.
 
+Set the capture up so there is nothing to redact afterwards. Editing a real screenshot is
+slower than staging a clean one and tends to look retouched.
+
+- Create a meeting for the purpose, titled generically — `Project kickoff` rather than
+  anything internal.
+- Put it on an empty future day, so the grid behind the popup carries no real event titles.
+- Add no Google Meet and no room. A conferencing block publishes a live join link, a dial-in
+  number and a PIN.
+- Invite two or three people who are in the connected Slack workspace. The popup shows a
+  count, not names, unless the guest list is expanded — leave it collapsed.
+- Turn off other Calendar add-ons first. Third-party panels overlay their own data on the
+  event, and a meeting-cost estimate is not something to publish.
+- Collapse the left rail, or crop it. Time Insights prints your meeting hours and your
+  booking-page name.
+- Use the same light or dark theme for all three shots.
+
 Take these three, then run `tools/fit-screenshot.sh <files>` to fit them to 1280x800:
 
 1. The side panel open on a meeting, showing the guest count and the prefilled channel name.
