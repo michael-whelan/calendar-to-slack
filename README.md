@@ -83,9 +83,11 @@ Two script properties must be set on the Apps Script project for the OAuth flow 
 OAuth consent screen, verification, listing assets, Slack distribution.
 
 The `extension/` directory is a Chrome extension that injects the same button into the event
-popup. It is on hold and not part of the published add-on: it depended on a web app
-deployment that ran as whoever deployed it, which is wrong for a public install. Reviving it
-means authenticating the caller properly. See the note above `doGet` in `Code.gs`.
+popup. It does not currently work. It called a web-app endpoint in `Code.gs`, guarded by a
+shared secret and running as whoever deployed it — wrong for a public install, and an
+undocumented endpoint on an add-on requesting sensitive scopes. The endpoint was removed
+before OAuth verification; `git log -- Code.gs` has it if you want it back. Reviving it means
+authenticating the caller as themselves rather than trusting a secret.
 
 ## Licence
 

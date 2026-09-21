@@ -10,7 +10,7 @@ var SLACK_API = 'https://slack.com/api/';
 
 // Bumped whenever behaviour changes. Shown on the settings card, so a support report
 // names the build it came from.
-var VERSION = '11-marketplace';
+var VERSION = '12-verification';
 
 /* ---------- core ---------- */
 
@@ -246,7 +246,7 @@ function onHomepage() {
     .build();
 }
 
-/* ---------- front door 1: the Calendar side panel ---------- */
+/* ---------- the Calendar side panel ---------- */
 
 /** Renders the side-panel card when a Calendar event is opened. */
 function onEventOpen(e) {
@@ -288,8 +288,6 @@ function createChannel(e) {
     .build();
 }
 
-/* ---------- front door 2: the Chrome extension ---------- */
-
 /**
  * NOT DEPLOYED in the published add-on. The manifest carries no `webapp` block, so nothing
  * below is reachable — it is kept for the Chrome extension, which is on hold.
@@ -299,103 +297,6 @@ function createChannel(e) {
  * person's calendar for the whole org. A public version has to run as USER_ACCESSING and
  * authenticate the caller (chrome.identity bearer token), not a shared secret.
  */
-/** Version probe. Carries no data and needs no secret — open the /exec URL in a browser. */
-function doGet() {
-  return json({ ok: true, version: VERSION });
-}
-
-function doPost(request) {
-  var expected = PropertiesService.getScriptProperties().getProperty('SHARED_SECRET');
-  var body;
-
-  try {
-    body = JSON.parse(request.postData.contents);
-  } catch (err) {
-    return json({ ok: false, error: 'Malformed request.' });
-  }
-
-  if (!expected || body.secret !== expected) return json({ ok: false, error: 'Unauthorized.' });
-
-  var emails = body.emails || [];
-  var title = body.title || '';
-
-  // An event id is the reliable path: Calendar's popup stops rendering individual
-  // guests on large meetings, so anything scraped from it undercounts.
-  if (body.eventId) {
-    var event = readEvent(body.eventId, body.calendarId);
-    if (!event.error) {
-      emails = event.emails;
-      title = title || event.title;
-    } else if (!emails.length) {
-      return json({ ok: false, error: event.error });
-    }
-  }
-
-  return json(makeChannel(emails, title));
-}
-
-/**
- * The authoritative guest list for an event, straight from Calendar. The id lifted from
- * the DOM comes in more than one shape, so try each before giving up.
- */
-function readEvent(eventId, calendarId) {
-  var candidates = [{ id: eventId, calendar: calendarId }];
-  var decoded = decodeEid(eventId);
-  if (decoded) candidates.push(decoded);
-
-  for (var i = 0; i < candidates.length; i++) {
-    try {
-      var event = Calendar.Events.get(candidates[i].calendar || calendarId || 'primary', candidates[i].id);
-      var emails = (event.attendees || [])
-        .filter(function (guest) { return guest.email && !guest.resource; })
-        .map(function (guest) { return guest.email; });
-
-      if (event.organizer && event.organizer.email) emails.push(event.organizer.email);
-      return { emails: dedupe(emails), title: event.summary || '' };
-    } catch (err) {
-      // Wrong shape of id — fall through and try the next one.
-    }
-  }
-
-  return { error: 'Could not read that event from Calendar.' };
-}
-
-/** Calendar sometimes encodes its DOM id as base64 of "<eventId> <calendarId>". */
-function decodeEid(eventId) {
-  try {
-    var text = Utilities.newBlob(Utilities.base64Decode(eventId)).getDataAsString();
-    var parts = text.split(' ');
-    return /^[\w-]+$/.test(parts[0]) ? { id: parts[0], calendar: parts[1] } : null;
-  } catch (err) {
-    return null;
-  }
-}
-
-/* ---------- diagnostics ---------- */
-
-/**
- * Run this from the Apps Script editor when Slack rejects something. It reports which
- * token is in use, who Slack thinks you are, and the raw reply to a real create attempt.
- * It leaves a throwaway channel behind if creation succeeds.
- */
-function diagnose() {
-  var identity = slack('auth.test');
-
-  Logger.log('token present for this user: %s', !!slackToken());
-  Logger.log('token in use starts with: %s', String(slackToken()).slice(0, 5));
-  Logger.log('auth.test: %s', JSON.stringify(identity));
-  Logger.log('acting as a bot: %s', !!identity.bot_id);
-
-  var attempt = slack('conversations.create', {
-    name: 'c2s-selftest-' + Date.now(),
-    is_private: true
-  });
-  Logger.log('conversations.create: %s', JSON.stringify(attempt));
-
-  if (!attempt.ok) {
-    Logger.log('needed scope (if any): %s', attempt.needed || 'n/a');
-  }
-}
 
 /* ---------- helpers ---------- */
 
@@ -457,10 +358,6 @@ function slugify(text) {
 
 function plural(count) {
   return count === 1 ? '' : 's';
-}
-
-function json(value) {
-  return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function toast(text) {
