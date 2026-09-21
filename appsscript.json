@@ -23,7 +23,7 @@
   "addOns": {
     "common": {
       "name": "Calendar to Slack",
-      "logoUrl": "https://michael-whelan.github.io/calendar-to-slack/assets/logo-128.png",
+      "logoUrl": "https://calendar-to-slack.michaelwhelan.dev/assets/logo-128.png",
       "homepageTrigger": {
         "runFunction": "onHomepage"
       }

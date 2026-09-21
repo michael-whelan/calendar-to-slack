@@ -52,14 +52,14 @@ Keywords
 ## Developer
 
     Developer name     Michael Whelan
-    Website            https://michael-whelan.github.io/calendar-to-slack/
+    Website            https://calendar-to-slack.michaelwhelan.dev/
     Support email      the address you want on the public listing
 
 ## URLs
 
-    Terms of service   https://michael-whelan.github.io/calendar-to-slack/terms
-    Privacy policy     https://michael-whelan.github.io/calendar-to-slack/privacy
-    Support            https://michael-whelan.github.io/calendar-to-slack/support
+    Terms of service   https://calendar-to-slack.michaelwhelan.dev/terms
+    Privacy policy     https://calendar-to-slack.michaelwhelan.dev/privacy
+    Support            https://calendar-to-slack.michaelwhelan.dev/support
 
 ## Graphics
 

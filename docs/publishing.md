@@ -12,23 +12,30 @@ GitHub repository → Settings → Pages → deploy from branch `main`, folder `
 
 Gives you the three URLs the listing requires:
 
-- Privacy `https://michael-whelan.github.io/calendar-to-slack/privacy`
-- Terms `https://michael-whelan.github.io/calendar-to-slack/terms`
-- Support `https://michael-whelan.github.io/calendar-to-slack/support`
+- Privacy `https://calendar-to-slack.michaelwhelan.dev/privacy`
+- Terms `https://calendar-to-slack.michaelwhelan.dev/terms`
+- Support `https://calendar-to-slack.michaelwhelan.dev/support`
 
 Confirm each one loads before going further. `logoUrl` in `appsscript.json` points at
 `/assets/logo-128.png` on the same host, so the add-on's own icon breaks until Pages is live.
 
 ## 2. Verify the domain
 
-[Search Console](https://search.google.com/search-console) → add property →
-`https://michael-whelan.github.io/calendar-to-slack/`, verified by HTML file upload into
-`docs/`. OAuth verification requires the homepage, privacy and terms URLs to sit on a domain
-verified by the same account that owns the Cloud project.
+The pages are served from GitHub Pages on a custom domain, `docs/CNAME`. They cannot be
+served from `*.github.io`: OAuth verification requires the homepage, privacy and terms URLs
+to sit on a **domain** property verified in Search Console, and `github.io` is on the Public
+Suffix List and owned by GitHub, so nobody else can verify it. A URL-prefix property does
+verify, which is misleading — it satisfies Search Console but not the OAuth check, which is
+where this was first rejected.
 
-A `github.io` subdomain is verifiable this way but is a shared domain, and reviewers
-sometimes push back on it. If that happens, move the pages to a domain you own and update
-both the listing and `logoUrl`.
+DNS is a single `CNAME` from the subdomain to `<user>.github.io`. On Cloudflare the record
+must be **DNS only**, not proxied: the orange cloud blocks GitHub's certificate validation,
+and on a `.dev` domain, which is HSTS-preloaded, no certificate means the site does not load
+at all.
+
+Then [Search Console](https://search.google.com/search-console) → add a **Domain** property
+for the parent domain, verified by TXT record, and confirm the Cloud project's owning account
+is the same one that verified it.
 
 ## 3. Cloud project
 
