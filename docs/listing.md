@@ -107,6 +107,10 @@ Suggested captions, if the form asks:
     2. One click. The channel exists before the confirmation clears.
     3. Connect your own Slack account once. Disconnect revokes it.
 
+Flowtrace's cost overlay cannot be removed on a managed account, and it sits mid-card so
+cropping cannot reach it. Cut it out afterwards with `tools/cut-band.py <shot> --auto`,
+which finds the row by its green estimate chip and closes the card up around it.
+
 Run `tools/capture-listing.sh` to walk all three: it prints what to put on screen, counts
 down, captures, and fits the result to 1280x800 in `docs/assets/screenshots/`. Pass shot
 numbers to redo only some, e.g. `tools/capture-listing.sh 2`.
