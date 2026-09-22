@@ -11,9 +11,7 @@ skipped silently.
 Open a meeting, open the add-on, click Create private channel. The channel exists in Slack by
 the time the confirmation appears, with everyone from the invitation already in it.
 
-## Install
-
-Install from the Google Workspace Marketplace — listing link pending review.
+## How it is set up
 
 Each person connects their own Slack account the first time they use it. There is nothing to
 deploy, no script to run, and no token to paste. Nobody acts on anyone else's behalf.

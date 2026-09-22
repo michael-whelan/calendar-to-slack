@@ -6,7 +6,7 @@ skipped silently.
 
 ## Install
 
-1. Install from the Google Workspace Marketplace — listing link pending review.
+1. Install the add-on into Google Calendar.
 2. Open [Google Calendar](https://calendar.google.com) and click any meeting.
 3. In the add-on strip down the far right edge — the one holding Tasks, Keep and Contacts —
    click the Calendar to Slack icon. If the strip isn't showing, expand the side panel with

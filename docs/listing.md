@@ -18,28 +18,43 @@ Short description
 
 Detailed description
 
-    Calendar to Slack turns the people on a meeting into a private Slack channel, without
-    typing a single name.
+    Calendar to Slack creates a private Slack channel from the people invited to a Google Calendar meeting, in one click, without typing a single name.
 
-    Open a meeting in Google Calendar, open the add-on in the side panel, and click Create
-    private channel. It matches the guests to Slack accounts by email address, creates the
-    channel, and invites everyone it matched. The channel name is prefilled from the meeting
-    title, and you can edit it before you click.
+    HOW IT WORKS
 
-    It is deliberately one thing done well. There are no rules to configure, no automation to
-    maintain, and no bot left sitting in your channels afterwards. You decide, per meeting,
-    whether a conversation is worth a channel — the add-on just removes the three minutes of
-    copying addresses.
+    Open a meeting in Google Calendar and open Calendar to Slack in the side panel. The add-on reads the guest list of that meeting and shows how many people are on it, with a channel name already filled in from the meeting title. Edit the name if you want, then click Create private channel.
 
-    Everyone connects their own Slack account, and channels are created by you, as you, with
-    your own permissions. Guests who are not in your Slack workspace are skipped silently.
+    The add-on matches each guest to a Slack account by email address, creates a private channel in your Slack workspace, and invites everyone it matched. Slack opens on the new channel as soon as it is created, so you can start the conversation straight away.
 
-    Where a workspace forbids creating channels through the API, which is common on
-    Enterprise Grid, it opens a group DM with the same people instead so the conversation
-    still happens.
+    WHAT HAPPENS TO PEOPLE IT CANNOT MATCH
 
-    Free and open source. MIT licensed, source at
-    github.com/michael-whelan/calendar-to-slack
+    Guests with no Slack account in your workspace are skipped without fuss: external attendees, clients, people who have left, meeting rooms and resource calendars. You are told how many were added rather than being made to resolve each one.
+
+    NAMING
+
+    The channel name is taken from the meeting title, lowercased and hyphenated to fit Slack's rules. You can change it before creating. If the name is already taken, a numeric suffix is added rather than failing.
+
+    WHO CREATES THE CHANNEL
+
+    You do. Each person connects their own Slack account, and channels are created as that person, using their own Slack permissions. No shared bot account is involved and no bot is left sitting in the channels afterwards. Connect once and it is remembered; click Disconnect at any time to revoke it.
+
+    WHEN YOUR WORKSPACE DOES NOT ALLOW NEW CHANNELS
+
+    Many Slack workspaces, on Enterprise Grid in particular, restrict who may create channels. Where that applies, the add-on opens a group direct message with the same people instead, so the conversation still happens. Group DMs hold nine people including you; above that the add-on tells you rather than quietly leaving people out.
+
+    WHAT IT READS
+
+    Only the meeting you have open. It reads that event's guest list to match people to Slack, and that event's title to suggest a channel name. It does not read your other events, your calendars, or anything else. Guest email addresses are sent to Slack only to look up the matching account and are not stored or logged. The only thing kept is your Slack access token, held against your own Google account so that you do not have to reconnect each time, and removed when you click Disconnect.
+
+    WHAT YOU NEED
+
+    A Google Calendar account and a Slack account in the workspace you want channels created in. Some Slack workspaces require an administrator to approve new apps; if yours does, Slack sends the request to your admin when you connect, and you can connect once they approve it.
+
+    DESIGNED TO DO ONE THING
+
+    There are no rules to configure, no automation running in the background and no channels created without you asking. You decide, meeting by meeting, whether a conversation deserves a channel. The add-on only removes the few minutes of copying addresses.
+
+    Free and open source under the MIT licence. Source code at github.com/michael-whelan/calendar-to-slack
 
 Category
 
