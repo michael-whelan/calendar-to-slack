@@ -1,0 +1,5 @@
+# GitHub Pages serves everything in this directory. These two are working notes for
+# publishing the add-on, not pages for users, so keep them out of the built site.
+exclude:
+  - listing.md
+  - publishing.md
