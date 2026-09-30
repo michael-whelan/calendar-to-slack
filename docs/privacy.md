@@ -4,17 +4,19 @@ title: Privacy Policy
 
 # Privacy Policy
 
-Calendar to Slack, last updated 15 September 2026.
+Calendar to Slack, last updated 30 September 2026.
 
-Calendar to Slack is a Google Workspace add-on that creates a private Slack channel from the
-guest list of a Google Calendar meeting. This policy describes exactly what it reads, what it
-stores, and who it sends data to.
+Calendar to Slack is a Google Workspace™ add-on that creates a private Slack channel from the
+guest list of a Google Calendar™ meeting. This policy describes exactly what Google user data
+it reads, what it stores, and who it sends data to.
 
-## What it reads
+## What Google user data it reads
 
 When you open a meeting in Google Calendar with the add-on open, it reads the guest list and
 organiser of that one event, and the meeting title. It reads nothing from any other event,
-and nothing from your calendar when the add-on is not open.
+and nothing from your calendar when the add-on is not open. It reads no other Google user
+data: not your times or availability, not changes to events, and no Google profile or contact
+information.
 
 When you click Create private channel, the guest email addresses are sent to Slack to look up
 matching accounts in your workspace.
@@ -38,7 +40,25 @@ Slack only, at `https://slack.com/api/`, and only to carry out an action you tri
 looking up guests by email address, creating the channel, and inviting the people it matched.
 
 No data is sent to the maintainer, to an analytics provider, to an advertising network, or to
-any other third party. There is no other network destination in the code.
+any other third party. There is no other network destination in the code. Google user data is
+never sold, rented or shared.
+
+## How your data is protected
+
+In transit: every call the add-on makes is over HTTPS. The only outbound destination in the
+code is `https://slack.com/api/`, and the manifest's URL allowlist permits no other, so there
+is no endpoint it could reach unencrypted. Calendar data reaches the add-on inside Google's
+own infrastructure and never crosses a network the add-on controls.
+
+At rest: the Slack token is the only stored value, held in Apps Script user properties on
+Google's platform, which encrypts stored data at rest.
+
+Data minimisation: no calendar content is stored at all. Guest addresses and the meeting title
+are read at the moment you act, used to complete that action, and discarded.
+
+Access control: only this add-on running under your own Google account can read the stored
+token. There is no server, no database and no operations team, so there are no employees or
+subprocessors with routine access to your Google user data.
 
 ## Google user data and Limited Use
 
@@ -51,7 +71,11 @@ invoke, is never transferred to others except as needed to provide that feature,
 used for advertising, and is never read by humans except with your explicit consent, to
 resolve a support request you raised, for security purposes, or where required by law.
 
-## Removing your data
+## Retention and removing your data
+
+The Slack token is kept only while you are using the add-on, and no calendar data is retained
+at any point. There is no retention period to wait out: the token is deleted the moment you
+disconnect or uninstall.
 
 Open the add-on in the Google Calendar side panel with no meeting selected and click
 Disconnect. This revokes the token at Slack and deletes the stored copy immediately. Nothing
