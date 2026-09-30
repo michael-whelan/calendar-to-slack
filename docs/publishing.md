@@ -53,13 +53,25 @@ Cloud console → APIs and services → OAuth consent screen → External.
 App name `Calendar to Slack`, your support email, the 128px logo from `docs/assets/`, the
 homepage, privacy and terms URLs from step 1, and a developer contact address.
 
-Add exactly the four scopes in `appsscript.json` and nothing more. They must match what the
-manifest requests and what the Marketplace SDK declares, or review bounces.
+Scopes → Add or remove scopes. Add exactly these four and nothing more:
 
-Then submit for verification. `calendar.events.readonly` and
-`calendar.addons.current.event.read` are sensitive scopes, so this is mandatory for a public
-app. The justification to write: guest addresses are read from the open event only, to match
-Slack accounts, and are not retained; the title is read only to prefill the channel name.
+    https://www.googleapis.com/auth/calendar.addons.execute
+    https://www.googleapis.com/auth/calendar.addons.current.event.read
+    https://www.googleapis.com/auth/calendar.events.readonly
+    https://www.googleapis.com/auth/script.external_request
+
+The sensitive two, `calendar.events.readonly` and `calendar.addons.current.event.read`, are
+not in the picker table — paste them into the manual field below it. Justifications to go
+with them are in `listing.md`.
+
+`appsscript.json` is the source of truth for this list. Changing a scope there means
+mirroring it in the block above, on this screen, and in the Marketplace SDK at step 6: the
+three have to match exactly or review bounces, which is what happened the first time.
+
+Then submit for verification — mandatory for a public app, because of those two sensitive
+scopes. The justification to write: guest addresses are read from the open event only, to
+match Slack accounts, and are not retained; the title is read only to prefill the channel
+name.
 
 ## 5. Add-on deployment
 
@@ -75,7 +87,8 @@ Test through Deploy → Test deployments → Install before submitting anything.
 Cloud console → Google Workspace Marketplace SDK → App Configuration.
 
 Visibility public, app integration Google Workspace Add-on, and the deployment ID from step 5.
-Declare the same four scopes again.
+
+OAuth scopes → declare the same four, copied from the block at step 4.
 
 ## 7. Store listing
 
