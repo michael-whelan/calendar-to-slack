@@ -315,11 +315,19 @@ function dedupe(emails) {
   return emails.filter(function (email, i, all) { return email && all.indexOf(email) === i; });
 }
 
-/** Meeting title, used only to prefill the name field. Blank if the scope is absent. */
+/**
+ * Meeting title, used only to prefill the name field. Blank if it cannot be read, since an
+ * empty field is still usable — the user types a name instead.
+ *
+ * Log the reason. Swallowing it cost a verification round: the Calendar API was not enabled
+ * on the Cloud project, so every call threw, the field rendered empty, and the reviewer saw
+ * `calendar.events.readonly` requested but apparently unused. Nothing in the logs said why.
+ */
 function eventTitle(e) {
   try {
     return Calendar.Events.get(e.calendar.calendarId, e.calendar.id).summary || '';
   } catch (err) {
+    console.error('eventTitle: could not read the event title — ' + err);
     return '';
   }
 }

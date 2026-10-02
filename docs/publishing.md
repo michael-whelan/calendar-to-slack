@@ -44,7 +44,15 @@ is the same one that verified it.
 In the Apps Script editor → Project Settings → Google Cloud Platform project → Change
 project → paste the number. A Marketplace app cannot use the default script-managed project.
 
-In the Cloud project, enable the Google Workspace Marketplace SDK and the Apps Script API.
+In the Cloud project, enable the Google Workspace Marketplace SDK, the Apps Script API, and
+the Google Calendar API.
+
+The Calendar API is easy to miss and fails quietly. A default script-managed project enables
+an advanced service's API for you; a standard project does not, so `Calendar.Events.get` in
+`eventTitle` throws, the channel name field renders empty, and `calendar.events.readonly`
+looks requested but unused — which is enough to fail review. Confirm with:
+
+    gcloud services list --enabled --project=<project> | grep calendar-json
 
 ## 4. OAuth consent screen
 
